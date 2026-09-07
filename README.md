@@ -1,48 +1,34 @@
-# CK Stem Splitter v0.6
+# CK Stem Splitter v0.6.1 - 4 Stem (fork)
 
-Windows VST3 prototype for Adobe Audition that performs local vocal/instrumental separation.
+Tools used: 
+    • Cmake v4.3.1
+    • Juce v9.1.0
+    • Visual Studio Community 2026 v18.9.2
+    • Inno Setup v7.1.0
+    • Python v3.12.11
+    • demucs-onnx 0.3.4
+    Asio sdk v2.3.4, Vst-sdk v3.8.0-build66, Vst-sdk v2.4, lv2-sdk v1.18.10, aax-sdk v2.8.1, Jack2 v1.9
 
-## User workflow
+This fork is a 4-stem version (bass, drums, vocals, other) of Milkstyles' CKStemSplitter (originally a two-stem tool). Various changes have been made to both the code and the Python engine (such as activating the “Shift Tricks” parameters to reduce robotic artifacts).
+The “small” version uses the “htdemucs.onnx” model (301 MB), a non-FT StemSplitio model available at the following link:  https://huggingface.co/StemSplitio/htdemucs-onnx  Installing the “small” version requires approximately 420 MB of free space.
+This version still allows you to load models other than the default one, provided they are ONNX models designed for 4-stem extraction.
+The “large” version uses a different engine, built using a script that enables the use of four models (although loading just one via the app interface is sufficient); these are still StemSplitio models, but in this case, they are fine-tuned and specialized individually for drums, bass, vocals, and other elements available at the link https://huggingface.co/StemSplitio/htdemucs-ft-onnx , Each model is 301 MB in size (not 316 MB as stated on the website), totaling 1.17 GB.
+The two versions cannot be installed together because they would overwrite each other; furthermore, they use the same name and the same IDs.
+The installer for both versions places its components in the following directories:
 
-1. Insert **CK Stem Splitter** as a VST3 effect in Adobe Audition.
-2. Click **Load Audio** and choose the song file.
-3. Click **Split Stems**. The full file is processed directly; the song does not need to play in real time first.
-4. Choose **Vocals** or **Instrumental** in the output selector.
-5. Previously generated stems are cached per source file.
+- the plugins in their default folders:
+    • "C:\Program Files\Common Files\VST3\CK Stem Splitter.vst3"
+    • "C:\Program Files\Common Files\VST2\CK Stem Splitter.dll"
+    • "C:\Program Files\Common Files\LV2\CK Stem Splitter.lv2"
+    • "C:\Program Files\Common Files\Avid\Audio\Plug-Ins\CK Stem Splitter.aaxplugin"
+    • 
+- the model in:
+    • "C:\ProgramData\Commercial Kings\CK Stem Splitter\engine\models"
 
-## v0.6 changes
+- the engine in:
+    • "C:\ProgramData\Commercial Kings\CK Stem Splitter\engine"
 
-- Uses the `htdemucs_ft_vocals` FP16 vocal-specialist ONNX model.
-- Bundles the AI model and frozen engine into the Windows installer; no Python or model download is required on the user's PC.
-- Streams separated WAVs from disk with JUCE read-ahead buffering instead of loading entire stems into RAM.
-- Uses JUCE transport sample-rate correction for 44.1/48 kHz session compatibility.
-- Starts both cached stem transports after loading so Vocals/Instrumental playback is immediately available.
-- Audio callback uses a non-blocking `try_lock`; it clears the stem output rather than waiting on background cache/engine work.
-- Plugin state remembers the selected source-file path when the Audition host saves plugin state.
-- GitHub Actions smoke-tests the frozen AI engine before packaging.
-- Build artifact includes a SHA-256 checksum alongside the installer.
+the cache folder being used is:
+    • “C:\Users\Eugenio\AppData\Roaming\Commercial Kings\CK Stem Splitter\Cache”
 
-## Installed locations
-
-VST3:
-
-`C:\Program Files\Common Files\VST3\CK Stem Splitter.vst3`
-
-Private AI engine and model:
-
-`C:\ProgramData\Commercial Kings\CK Stem Splitter\engine\`
-
-Per-user stem cache:
-
-`%APPDATA%\Commercial Kings\CK Stem Splitter\Cache\`
-
-## Automated Windows build
-
-The GitHub Actions workflow `.github/workflows/build-windows-installer.yml` builds the x64 VST3, freezes the private separation engine, prewarms the bundled model, runs a real WAV separation smoke test, packages everything with Inno Setup, checks installer size, and uploads:
-
-- `CK-Stem-Splitter-Setup.exe`
-- `CK-Stem-Splitter-Setup.exe.sha256`
-
-## Development note
-
-The installer can be self-contained for end users, but anyone distributing a closed-source JUCE-based commercial build must make sure their JUCE licensing is appropriate for that distribution model.
+Please note that You can choose which version to install. In this regard, I would like to point out that the VST2 version requires a specific license from Steinberg; the AAX plugin, however, it won't work because is not activated by default, activating it requires a specific procedure and tools in accordance with Avid's guidelines. The standalone version supports ASIO and Jack2 (Jack for Windows).
