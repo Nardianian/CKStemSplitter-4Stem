@@ -17,6 +17,7 @@ Tools used:
 
     
 ![Testo alternativo](standalone-screenshot.jpg)
+
 This fork is a 4-stem version (bass, drums, vocals, other) of Milkstyles' CKStemSplitter (originally a two-stem tool). Various changes have been made to both the code and the Python engine (such as activating the “Shift Tricks” parameters to reduce robotic artifacts).
 The “small” version uses the “htdemucs.onnx” model (301 MB), a non-FT StemSplitio model available at the following link:  https://huggingface.co/StemSplitio/htdemucs-onnx  Installing the “small” version requires approximately 420 MB of free space.
 This version still allows you to load models other than the default one, provided they are ONNX models designed for 4-stem extraction.
