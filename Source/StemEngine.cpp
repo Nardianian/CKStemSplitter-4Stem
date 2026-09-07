@@ -27,7 +27,9 @@ void StemEngine::prepare(double sampleRate, int samplesPerBlock, int channels)
 
     std::scoped_lock lock(stateMutex);
     vocalsTransport.prepareToPlay(samplesPerBlock, sampleRate);
-    instrumentalTransport.prepareToPlay(samplesPerBlock, sampleRate);
+    bassTransport.prepareToPlay(samplesPerBlock, sampleRate);
+    drumsTransport.prepareToPlay(samplesPerBlock, sampleRate);
+    otherTransport.prepareToPlay(samplesPerBlock, sampleRate);  
 }
 
 void StemEngine::reset()
@@ -37,12 +39,12 @@ void StemEngine::reset()
 
 void StemEngine::clearStemSources()
 {
-    vocalsTransport.stop();
-    instrumentalTransport.stop();
-    vocalsTransport.setSource(nullptr);
-    instrumentalTransport.setSource(nullptr);
-    vocalsReaderSource.reset();
-    instrumentalReaderSource.reset();
+    vocalsTransport.stop(); bassTransport.stop(); drumsTransport.stop(); otherTransport.stop();
+    vocalsTransport.setSource(nullptr); bassTransport.setSource(nullptr);
+    drumsTransport.setSource(nullptr); otherTransport.setSource(nullptr);
+
+    vocalsReaderSource.reset(); bassReaderSource.reset();
+    drumsReaderSource.reset(); otherReaderSource.reset();
 }
 
 void StemEngine::setSourceFile(const juce::File& file)
@@ -70,13 +72,31 @@ bool StemEngine::hasSourceFile() const
     return sourceFile.existsAsFile();
 }
 
+void StemEngine::setModelFile(const juce::File& file)
+{
+    std::scoped_lock lock(stateMutex);
+    modelFile = file;
+}
+
+juce::File StemEngine::getModelFile() const
+{
+    std::scoped_lock lock(stateMutex);
+    return modelFile;
+}
+
+bool StemEngine::hasModelFile() const
+{
+    std::scoped_lock lock(stateMutex);
+    return modelFile.existsAsFile();
+}  
+
 juce::File StemEngine::getEngineExecutable() const
 {
     auto base = juce::File::getSpecialLocation(juce::File::commonApplicationDataDirectory)
-                    .getChildFile("Commercial Kings")
-                    .getChildFile("CK Stem Splitter")
-                    .getChildFile("engine")
-                    .getChildFile("ckstem-engine");
+        .getChildFile("Commercial Kings")
+        .getChildFile("CK Stem Splitter")
+        .getChildFile("engine");
+
 #if JUCE_WINDOWS
     return base.getChildFile("ckstem-engine.exe");
 #else
@@ -140,13 +160,14 @@ void StemEngine::separationWorker()
     const auto cacheDir = getCacheDirectoryForSource(localSource);
     cacheDir.createDirectory();
     const auto vocals = cacheDir.getChildFile("vocals.wav");
-    const auto instrumental = cacheDir.getChildFile("instrumental.wav");
+    const auto bass = cacheDir.getChildFile("bass.wav");
+    const auto drums = cacheDir.getChildFile("drums.wav");
+    const auto other = cacheDir.getChildFile("other.wav");
 
-    if (vocals.existsAsFile() && instrumental.existsAsFile())
+    if (vocals.existsAsFile() && bass.existsAsFile() && drums.existsAsFile() && other.existsAsFile())
     {
         progress.store(0.9f);
-        if (loadCachedStems(vocals, instrumental))
-            progress.store(1.0f);
+        if (loadCachedStems(vocals, bass, drums, other)) progress.store(1.0f);
         busy.store(false);
         return;
     }
@@ -162,7 +183,7 @@ void StemEngine::separationWorker()
 
     {
         std::scoped_lock lock(stateMutex);
-        status = "Separating vocals and instrumental...";
+        status = "Separating vocals, bass, drums, other ...";
     }
     progress.store(0.1f);
 
@@ -173,13 +194,13 @@ void StemEngine::separationWorker()
     args.add(localSource.getFullPathName());
     args.add(cacheDir.getFullPathName());
     args.add("--model");
-    args.add("htdemucs_ft_vocals");
-    args.add("--small");
+    args.add(modelFile.getFileNameWithoutExtension());
     args.add("--providers");
     args.add("auto");
     args.add("--cache-dir");
-    args.add(getModelCacheDirectory().getFullPathName());
-    args.add("--karaoke");
+    args.add(modelFile.getParentDirectory().getFullPathName());
+    args.add("--shifts");
+    args.add("2");
     args.add("--verbose");
 
     if (!process.start(args))
@@ -216,7 +237,7 @@ void StemEngine::separationWorker()
             else if (line.containsIgnoreCase("separat") || line.containsIgnoreCase("segment"))
             {
                 std::scoped_lock lock(stateMutex);
-                status = "Separating vocals and instrumental...";
+                status = "Separating vocals, bass, drums, other...";
                 progress.store(0.55f);
             }
             else if (line.containsIgnoreCase("writ") || line.containsIgnoreCase("save"))
@@ -235,11 +256,8 @@ void StemEngine::separationWorker()
     }
 
     const auto exitCode = process.getExitCode();
-    const auto karaoke = cacheDir.getChildFile("karaoke.wav");
-    if (!instrumental.existsAsFile() && karaoke.existsAsFile())
-        karaoke.moveFileTo(instrumental);
 
-    if (exitCode != 0 || !vocals.existsAsFile() || !instrumental.existsAsFile())
+    if (exitCode != 0 || !vocals.existsAsFile() || !bass.existsAsFile() || !drums.existsAsFile() || !other.existsAsFile())
     {
         std::scoped_lock lock(stateMutex);
         status = "Stem separation failed (engine code " + juce::String(exitCode) + ")";
@@ -247,20 +265,22 @@ void StemEngine::separationWorker()
         return;
     }
 
-    if (loadCachedStems(vocals, instrumental))
+    if (loadCachedStems(vocals, bass, drums, other))
         progress.store(1.0f);
     busy.store(false);
 }
 
-bool StemEngine::loadCachedStems(const juce::File& vocalsFile, const juce::File& instrumentalFile)
+bool StemEngine::loadCachedStems(const juce::File& vocalsFile, const juce::File& bassFile, const juce::File& drumsFile, const juce::File& otherFile)
 {
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
 
     auto vocalReader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(vocalsFile));
-    auto instrumentalReader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(instrumentalFile));
+    auto bassReader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(bassFile));
+    auto drumsReader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(drumsFile));
+    auto otherReader = std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(otherFile));
 
-    if (vocalReader == nullptr || instrumentalReader == nullptr)
+    if (vocalReader == nullptr || bassReader == nullptr || drumsReader == nullptr || otherReader == nullptr)
     {
         std::scoped_lock lock(stateMutex);
         status = "Could not read separated WAV files";
@@ -268,8 +288,10 @@ bool StemEngine::loadCachedStems(const juce::File& vocalsFile, const juce::File&
     }
 
     const auto vocalRate = vocalReader->sampleRate;
-    const auto instrumentalRate = instrumentalReader->sampleRate;
-    if (std::abs(vocalRate - instrumentalRate) > 1.0)
+    const auto bassRate = bassReader->sampleRate;
+    const auto drumsRate = drumsReader->sampleRate;
+    const auto otherRate = otherReader->sampleRate;
+    if (std::abs(vocalRate - bassRate) > 1.0 || std::abs(vocalRate - drumsRate) > 1.0 || std::abs(vocalRate - otherRate) > 1.0)
     {
         std::scoped_lock lock(stateMutex);
         status = "Separated stems have mismatched sample rates";
@@ -277,58 +299,73 @@ bool StemEngine::loadCachedStems(const juce::File& vocalsFile, const juce::File&
     }
 
     auto newVocals = std::make_unique<juce::AudioFormatReaderSource>(vocalReader.release(), true);
-    auto newInstrumental = std::make_unique<juce::AudioFormatReaderSource>(instrumentalReader.release(), true);
+    auto newBass = std::make_unique<juce::AudioFormatReaderSource>(bassReader.release(), true);
+    auto newDrums = std::make_unique<juce::AudioFormatReaderSource>(drumsReader.release(), true);
+    auto newOther = std::make_unique<juce::AudioFormatReaderSource>(otherReader.release(), true);
 
     stemsReady.store(false);
     {
         std::scoped_lock lock(stateMutex);
         clearStemSources();
         vocalsReaderSource = std::move(newVocals);
-        instrumentalReaderSource = std::move(newInstrumental);
+        bassReaderSource = std::move(newBass);
+        drumsReaderSource = std::move(newDrums);
+        otherReaderSource = std::move(newOther);
         stemSampleRate = vocalRate;
 
         constexpr int readAheadSamples = 262144;
         vocalsTransport.setSource(vocalsReaderSource.get(), readAheadSamples, &readAheadThread, stemSampleRate, 2);
-        instrumentalTransport.setSource(instrumentalReaderSource.get(), readAheadSamples, &readAheadThread, stemSampleRate, 2);
+        bassTransport.setSource(bassReaderSource.get(), readAheadSamples, &readAheadThread, stemSampleRate, 2);
+        drumsTransport.setSource(drumsReaderSource.get(), readAheadSamples, &readAheadThread, stemSampleRate, 2);
+        otherTransport.setSource(otherReaderSource.get(), readAheadSamples, &readAheadThread, stemSampleRate, 2);
         vocalsTransport.prepareToPlay(currentBlockSize, currentSampleRate);
-        instrumentalTransport.prepareToPlay(currentBlockSize, currentSampleRate);
+        bassTransport.prepareToPlay(currentBlockSize, currentSampleRate);
+        drumsTransport.prepareToPlay(currentBlockSize, currentSampleRate);
+        otherTransport.prepareToPlay(currentBlockSize, currentSampleRate);
         vocalsTransport.start();
-        instrumentalTransport.start();
-        status = "Stems ready - choose Vocals or Instrumental";
+        bassTransport.start();
+        drumsTransport.start();
+        otherTransport.start();
+        status = "Stems ready- Route outputs and press Play in DAW";
     }
 
     stemsReady.store(true);
     return true;
 }
 
-void StemEngine::process(juce::AudioBuffer<float>& buffer, StemMode mode, juce::int64 hostSamplePosition)
+void StemEngine::process(juce::AudioBuffer<float>& buffer, juce::int64 hostSamplePosition)
 {
-    if (mode == StemMode::original)
-        return;
-
     if (!stemsReady.load() || hostSamplePosition < 0 || currentSampleRate <= 0.0)
-    {
-        buffer.clear();
         return;
-    }
 
     std::unique_lock<std::mutex> lock(stateMutex, std::try_to_lock);
     if (!lock.owns_lock())
-    {
-        buffer.clear();
         return;
-    }
 
-    auto& transport = (mode == StemMode::vocals) ? vocalsTransport : instrumentalTransport;
     const double targetSeconds = static_cast<double>(hostSamplePosition) / currentSampleRate;
-    const double driftSeconds = std::abs(transport.getCurrentPosition() - targetSeconds);
-
     const double blockSeconds = static_cast<double>(buffer.getNumSamples()) / currentSampleRate;
-    if (driftSeconds > juce::jmax(0.050, blockSeconds * 4.0))
-        transport.setPosition(targetSeconds);
 
-    juce::AudioSourceChannelInfo info(&buffer, 0, buffer.getNumSamples());
-    transport.getNextAudioBlock(info);
+    // Lambda Function to process the stem on his stereo channels
+    auto processStem = [&](juce::AudioTransportSource& transport, int startChannel)
+        {
+            // Control DAW output channel enabled
+            if (startChannel + 1 < buffer.getNumChannels())
+            {
+                const double driftSeconds = std::abs(transport.getCurrentPosition() - targetSeconds);
+                if (driftSeconds > juce::jmax(0.050, blockSeconds * 4.0))
+                    transport.setPosition(targetSeconds);
+
+                juce::AudioBuffer<float> busBuffer(buffer.getArrayOfWritePointers() + startChannel, 2, buffer.getNumSamples());
+                juce::AudioSourceChannelInfo info(&busBuffer, 0, busBuffer.getNumSamples());
+                transport.getNextAudioBlock(info);
+            }
+        };
+
+    // Routing to four DAW stereo output
+    processStem(vocalsTransport, 0); // Uscita 1: Canali 0, 1 (Vocals)
+    processStem(bassTransport, 2);   // Uscita 2: Canali 2, 3 (Bass)
+    processStem(drumsTransport, 4);  // Uscita 3: Canali 4, 5 (Drums)
+    processStem(otherTransport, 6);  // Uscita 4: Canali 6, 7 (Other)
 }
 
 juce::String StemEngine::getStatus() const
