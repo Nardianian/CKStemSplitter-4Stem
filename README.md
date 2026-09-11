@@ -29,19 +29,20 @@ The “large” version uses a different engine, built using a script that enabl
 The two versions cannot be installed together because they would overwrite each other; furthermore, they use the same name and the same IDs.
 The installer for both versions places its components in the following directories:
 
-- the plugins in their default folders:
-    • "C:\Program Files\Common Files\VST3\CK Stem Splitter.vst3"
-    • "C:\Program Files\Common Files\VST2\CK Stem Splitter.dll"
-    • "C:\Program Files\Common Files\LV2\CK Stem Splitter.lv2"
-    • "C:\Program Files\Common Files\Avid\Audio\Plug-Ins\CK Stem Splitter.aaxplugin"
-    • 
-- the model in:
+The plugins in their default folders:
+    • VST3 > "C:\Program Files\Common Files\VST3\CK Stem Splitter.vst3"
+    • VST > "C:\Program Files\Common Files\VST2\CK Stem Splitter.dll"
+    • LV2 > "C:\Program Files\Common Files\LV2\CK Stem Splitter.lv2"
+    • AAX > "C:\Program Files\Common Files\Avid\Audio\Plug-Ins\CK Stem Splitter.aaxplugin"
+
+The models in:
     • "C:\ProgramData\Commercial Kings\CK Stem Splitter\engine\models"
 
-- the engine in:
+The Python script engine in:
     • "C:\ProgramData\Commercial Kings\CK Stem Splitter\engine"
 
-the cache folder being used is:
+The cache folder being used is:
     • “C:\Users\Eugenio\AppData\Roaming\Commercial Kings\CK Stem Splitter\Cache”
 
+Remember that you do not need to have Python installed to use the plugin, nor do you need an internet connection to access models or AI engines.
 Please note that You can choose which version to install. In this regard, I would like to point out that the VST2 version requires a specific license from Steinberg; the AAX plugin, however, it won't work because is not activated by default, activating it requires a specific procedure and tools in accordance with Avid's guidelines. The standalone version supports ASIO and Jack2 (Jack for Windows).
