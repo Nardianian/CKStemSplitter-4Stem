@@ -25,6 +25,7 @@ The “small” version uses the “htdemucs.onnx” model (301 MB), a non-FT St
 This version still allows you to load models other than the default one, provided they are ONNX models designed for 4-stem extraction.
 
 The “large” version uses a different engine, built using a script that enables the use of four models (although loading just one via the app interface is sufficient because the Python script is designed to allow the app to access the other models as if they were a single model); these models are still StemSplitio models, but in this case, they are fine-tuned and specialized individually for drums, bass, vocals, and other elements available at the link https://huggingface.co/StemSplitio/htdemucs-ft-onnx , Each model is 301 MB in size (not 316 MB as stated on the website), totaling 1.17 GB.
+
 The two versions cannot be installed together because they would overwrite each other; furthermore, they use the same name and the same IDs.
 The installer for both versions places its components in the following directories:
 
