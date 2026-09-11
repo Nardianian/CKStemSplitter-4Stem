@@ -44,5 +44,6 @@ The Python script engine in:
 The cache folder being used is:
     • “C:\Users\Eugenio\AppData\Roaming\Commercial Kings\CK Stem Splitter\Cache”
 
+Please note that You can choose which version to install. In this regard, I would like to point out that the VST2 version requires a specific license from Steinberg; the AAX plugin, however, it won't work because is not activated by default, activating it requires a specific procedure and tools in accordance with Avid's guidelines. The standalone version supports ASIO and Jack2 (Jack for Windows). 
 Remember that you do not need to have Python installed to use the plugin, nor do you need an internet connection to access models or AI engines.
-Please note that You can choose which version to install. In this regard, I would like to point out that the VST2 version requires a specific license from Steinberg; the AAX plugin, however, it won't work because is not activated by default, activating it requires a specific procedure and tools in accordance with Avid's guidelines. The standalone version supports ASIO and Jack2 (Jack for Windows).
+The volume affects all four tracks; if you want to control them individually, you can do so from the DAW.
