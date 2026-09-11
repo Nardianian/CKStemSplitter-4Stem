@@ -1,6 +1,7 @@
 # CK Stem Splitter v0.6.1 - 4 Stem (fork)
 
 Tools used: 
+
     • Cmake v4.3.1
     
     • Juce v9.1.0
@@ -16,7 +17,7 @@ Tools used:
     And: Asio sdk v2.3.4, Vst-sdk v3.8.0-build66, Vst-sdk v2.4, lv2-sdk v1.18.10, aax-sdk v2.8.1, Jack2 v1.9
 
     
-![Testo alternativo](standalone-screenshot.jpg)
+![Text alternative](standalone-screenshot.jpg)
 
 This fork is a 4-stem version (bass, drums, vocals, other) of Milkstyles' CKStemSplitter (originally a two-stem tool). Various changes have been made to both the code and the Python engine (such as activating the “Shift Tricks” parameters to reduce robotic artifacts).
 The “small” version uses the “htdemucs.onnx” model (301 MB), a non-FT StemSplitio model available at the following link:  https://huggingface.co/StemSplitio/htdemucs-onnx  Installing the “small” version requires approximately 420 MB of free space.
